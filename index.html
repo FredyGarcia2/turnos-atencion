@@ -151,6 +151,7 @@ h1{margin:0;font-size:2.4rem;letter-spacing:-.035em;line-height:1.1}
 .kbtn small{font-size:.9rem;color:var(--mut);font-weight:500}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}}
 .mbar,.tabbar{display:none}
+.sbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--bd);display:grid;place-items:center;background:var(--card);color:var(--g)}
 .back{display:inline-flex;align-items:center;gap:6px;position:fixed;left:16px;top:16px;z-index:5;padding:9px 14px;border-radius:99px;background:var(--card);border:1px solid var(--bd);color:var(--tx);text-decoration:none;font-weight:700;font-size:.85rem}
 @media(max-width:820px){
   .app{grid-template-columns:1fr;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
@@ -237,6 +238,20 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
 const view=()=>(location.hash||'#panel').slice(1).split('?')[0];
 let modal=null,lastTicket=null,soundOn=false,spoken=S.called?S.called.at:0,flashId=null;
 
+let AC;
+function ac(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC}catch{return null}}
+function tone(f,t0,d,type='sine',v=.2){const c=ac();if(!c)return;const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0;
+  o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+d);
+  o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.05)}
+const SND={
+  tap:()=>tone(660,0,.08,'triangle',.08),
+  take:()=>{tone(523,0,.14);tone(784,.12,.28)},
+  call:()=>{tone(880,0,.35);tone(659,.3,.55)},
+  done:()=>{tone(523,0,.12,'triangle');tone(392,.1,.25,'triangle')},
+  on:()=>{tone(523,0,.1);tone(659,.09,.1);tone(784,.18,.2)}
+};
+const BUZZ={take:35,call:[40,60,40],done:25};
+function play(n){if(!S.voice)return;const f=SND[n];if(f)f();try{if(BUZZ[n]&&navigator.vibrate)navigator.vibrate(BUZZ[n])}catch{}}
 function addTurn(sid){
   S.n[sid]=(S.n[sid]||0)+1;
   const t={id:sid+pad(S.n[sid]),s:sid,at:Date.now()};
@@ -280,7 +295,7 @@ function vPanel(){
   const c=S.called;
   const wait=S.q.length;
   return `<div class="app">${sidebar('panel')}
-   <div class="mbar"><div class="logo"><i>${I.logo}</i><span>turnia<b>.</b></span></div><div class="br"><i class="dot pulse" style="color:var(--g)"></i>Sucursal Centro</div></div><main>
+   <div class="mbar"><div class="logo"><i>${I.logo}</i><span>turnia<b>.</b></span></div><div class="br"><span><i class="dot pulse" style="color:var(--g)"></i> Sucursal Centro</span><button class="sbtn" data-a="voice" aria-label="Sonido">${S.voice?I.vol:I.mute}</button></div></div><main>
    <div class="top"><span>Operación &nbsp;/&nbsp; <b>Control de turnos</b></span>
      <div class="r"><span>${I.clock} Hoy, ${new Date().toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}</span><div class="av" style="width:36px;height:36px">AM</div></div></div>
    <div class="eyebrow">PANEL DE OPERACIÓN <span class="pill"><i class="dot pulse"></i>Sistema en línea</span></div>
@@ -300,7 +315,7 @@ function vPanel(){
    <div class="cols"><div class="stack">
      <div class="card"><div class="ct"><div><h2>Turno en atención</h2><small>Así aparece en la pantalla de la sala</small></div></div>
        <div class="now"><div class="lbl"><i class="dot pulse"></i>LLAMADO AHORA</div>
-         <button class="voice" data-a="voice">${S.voice?I.vol+' Voz activada':I.mute+' Voz apagada'}</button>
+         <button class="voice" data-a="voice">${S.voice?I.vol+' Sonido activado':I.mute+' Sonido apagado'}</button>
          <div class="num ${c&&flashId===c.id?'flash':''}">${c?c.id:'—'}</div>
          <div class="to">${c?`Favor de pasar a <b>Mesa ${c.desk}</b>`:'Aún no se ha llamado a nadie'}</div>
          <div class="foot"><span>Último turno llamado &nbsp;<b style="color:var(--tx)">${c?tm(c.at):'—'}</b></span><a href="#sala" target="_blank">Abrir pantalla pública ${I.arrow}</a></div></div></div>
@@ -360,24 +375,25 @@ function render(){
 function announce(){
   if(!S.called||S.called.at===spoken)return;
   spoken=S.called.at;
-  if(soundOn&&S.voice&&'speechSynthesis' in window){
+  if(soundOn&&S.voice){
+    SND.call();
     const id=S.called.id;
     const u=new SpeechSynthesisUtterance(`Turno ${id[0]} ${parseInt(id.slice(1),10)}, favor de pasar a la mesa ${S.called.desk}`);
-    u.lang='es-MX';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);
+    u.lang='es-MX';u.rate=.9;if('speechSynthesis' in window){speechSynthesis.cancel();setTimeout(()=>speechSynthesis.speak(u),900)}
   }
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
   if(b.classList.contains('ov')&&e.target!==b)return;
   const a=b.dataset.a;
-  if(a==='new')modal='new';
-  else if(a==='close')modal=null;
-  else if(a==='take'){lastTicket=addTurn(b.dataset.s);modal='ticket'}
-  else if(a==='call')callNext(+b.dataset.d);
-  else if(a==='done')finish(+b.dataset.d);
-  else if(a==='voice'){S.voice=!S.voice;save()}
+  if(a==='new'){modal='new';play('tap')}
+  else if(a==='close'){modal=null;play('tap')}
+  else if(a==='take'){lastTicket=addTurn(b.dataset.s);modal='ticket';play('take')}
+  else if(a==='call'){callNext(+b.dataset.d);play('call')}
+  else if(a==='done'){finish(+b.dataset.d);play('done')}
+  else if(a==='voice'){S.voice=!S.voice;save();play('on')}
   else if(a==='reset')return resetAll();
-  else if(a==='snd'){soundOn=true;if('speechSynthesis' in window)speechSynthesis.speak(new SpeechSynthesisUtterance(''))}
+  else if(a==='snd'){soundOn=true;ac();if('speechSynthesis' in window)speechSynthesis.speak(new SpeechSynthesisUtterance(''));SND.on()}
   render();
 });
 window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{S=JSON.parse(e.newValue);flashId=S.called&&S.called.id}catch{};render()}});
