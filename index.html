@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turnos de atención</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1b1f27;--mut:#6b7280;--ac:#2563eb;--ok:#16a34a;--bd:#e5e7eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#181c25;--tx:#e8eaf0;--mut:#9aa3b2;--bd:#262c38;--ac:#4f8bff}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+nav{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--card);flex-wrap:wrap}
+nav a{padding:8px 14px;border-radius:8px;text-decoration:none;color:var(--tx);font-weight:600}
+nav a.on{background:var(--ac);color:#fff}
+main{max-width:960px;margin:0 auto;padding:24px 16px}
+h1{margin:0 0 16px;font-size:1.5rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:600;background:var(--ac);color:#fff}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button.ok{background:var(--ok)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.svc{font-size:1.15rem;padding:28px 16px;width:100%}
+.mut{color:var(--mut)}
+.big{font-size:4.5rem;font-weight:800;line-height:1}
+.ticket{text-align:center;padding:28px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)}
+select{font:inherit;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+.tv{text-align:center}
+.tv .big{font-size:9rem;color:var(--ac)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="#cliente" data-v="cliente">Cliente</a>
+  <a href="#asesor" data-v="asesor">Asesor</a>
+  <a href="#pantalla" data-v="pantalla">Pantalla</a>
+</nav>
+<main id="app"></main>
+<script>
+const SERVICES=[{id:'A',name:'Atención general'},{id:'B',name:'Pagos y cobros'},{id:'C',name:'Reclamos'},{id:'D',name:'Nuevos clientes'}];
+const KEY='turnos-v1';
+const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{n:{},q:[],cur:{}}}catch{return{n:{},q:[],cur:{}}}};
+let S=load();
+const save=()=>{localStorage.setItem(KEY,JSON.stringify(S));render()};
+window.addEventListener('storage',e=>{if(e.key===KEY){S=load();render()}});
+const $=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const fmt=(s,n)=>s+String(n).padStart(3,'0');
+const app=document.getElementById('app');
+let lastTicket=null,desk=localStorage.getItem('desk')||'1';
+
+function take(sid){
+  S.n[sid]=(S.n[sid]||0)+1;
+  const t={id:fmt(sid,S.n[sid]),s:sid,at:Date.now()};
+  S.q.push(t);lastTicket=t;save();
+}
+function call(){
+  const mine=S.cur[desk];
+  if(mine){mine.done=true}
+  const next=S.q.shift();
+  if(next){S.cur[desk]={...next,desk,calledAt:Date.now()}} else delete S.cur[desk];
+  S.last=next?{id:next.id,desk,at:Date.now()}:S.last;
+  save();
+}
+function recall(){const c=S.cur[desk];if(c){S.last={id:c.id,desk,at:Date.now()};save()}}
+function finish(){delete S.cur[desk];save()}
+function reset(){if(confirm('¿Reiniciar todos los turnos?')){S={n:{},q:[],cur:{}};lastTicket=null;save()}}
+
+function vCliente(){
+  const el=$(`<h1>Toma tu turno</h1>
+  ${lastTicket?`<div class="card ticket" style="margin-bottom:16px"><div class="mut">Tu turno</div><div class="big">${lastTicket.id}</div><div class="mut">Esperando: ${S.q.filter(t=>t.s===lastTicket.s).length-1<0?0:S.q.findIndex(t=>t.id===lastTicket.id)} personas antes que tú</div></div>`:''}
+  <div class="grid">${SERVICES.map(s=>`<button class="svc" data-s="${s.id}">${s.name}<br><small>${S.q.filter(t=>t.s===s.id).length} en espera</small></button>`).join('')}</div>`);
+  el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>take(b.dataset.s));
+  return el;
+}
+function vAsesor(){
+  const c=S.cur[desk];
+  const el=$(`<h1>Panel del asesor</h1>
+  <div class="row" style="margin:0 0 16px;align-items:center"><span class="mut">Puesto:</span>
+   <select id="desk">${[1,2,3,4,5,6].map(n=>`<option ${String(n)===desk?'selected':''}>${n}</option>`).join('')}</select></div>
+  <div class="grid">
+   <div class="card ticket"><div class="mut">Atendiendo</div><div class="big">${c?c.id:'—'}</div>
+    <div class="row" style="justify-content:center">
+     <button class="ok" id="call">${S.q.length?'Llamar siguiente':'Sin turnos'}</button>
+     <button class="sec" id="rc" ${c?'':'disabled'}>Repetir</button>
+     <button class="sec" id="fin" ${c?'':'disabled'}>Terminar</button></div></div>
+   <div class="card"><b>En espera (${S.q.length})</b><ul>${S.q.map(t=>`<li><span>${t.id}</span><span class="mut">${new Date(t.at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></li>`).join('')||'<li class="mut">Nadie en espera</li>'}</ul></div>
+  </div>
+  <div class="row"><button class="sec" id="rs">Reiniciar turnos</button></div>`);
+  el.querySelector('#desk').onchange=e=>{desk=e.target.value;localStorage.setItem('desk',desk);render()};
+  el.querySelector('#call').disabled=!S.q.length&&!c;
+  el.querySelector('#call').onclick=call;
+  el.querySelector('#rc').onclick=recall;
+  el.querySelector('#fin').onclick=finish;
+  el.querySelector('#rs').onclick=reset;
+  return el;
+}
+function vPantalla(){
+  const l=S.last;
+  const cur=Object.values(S.cur);
+  return $(`<div class="tv"><h1>Turno llamado</h1>
+   <div class="big">${l?l.id:'—'}</div>
+   <h2>${l?'Puesto '+l.desk:'Esperando…'}</h2>
+   <div class="grid" style="margin-top:24px">${cur.map(c=>`<div class="card"><div class="mut">Puesto ${c.desk}</div><div style="font-size:2rem;font-weight:700">${c.id}</div></div>`).join('')}</div>
+   <p class="mut">En espera: ${S.q.length}</p></div>`);
+}
+let lastSpoken=null;
+function render(){
+  const v=(location.hash||'#cliente').slice(1);
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  app.replaceChildren(...({cliente:vCliente,asesor:vAsesor,pantalla:vPantalla}[v]||vCliente)().childNodes);
+  if(v==='pantalla'&&S.last&&S.last.at!==lastSpoken){
+    if(lastSpoken!==null&&'speechSynthesis' in window){
+      const u=new SpeechSynthesisUtterance(`Turno ${S.last.id.split('').join(' ')}, puesto ${S.last.desk}`);u.lang='es-ES';speechSynthesis.speak(u);
+    }
+    lastSpoken=S.last.at;
+  }
+}
+window.addEventListener('hashchange',render);
+render();
+</script>
+</body>
+</html>
