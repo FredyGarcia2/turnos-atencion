@@ -142,6 +142,7 @@ h1{margin:0;font-size:2.4rem;letter-spacing:-.035em;line-height:1.1}
 .sala .mini.idle b{color:var(--mut);opacity:.5}
 .sala footer{text-align:center;color:var(--mut)}
 .snd{position:fixed;right:20px;bottom:20px}
+.ovsnd{width:100%;border:0;cursor:pointer}
 .hide{display:none!important}
 .kiosk{min-height:100vh;padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center}
 .kiosk .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:min(900px,100%)}
@@ -252,6 +253,15 @@ const SND={
 };
 const BUZZ={take:35,call:[40,60,40],done:25};
 function play(n){if(!S.voice)return;const f=SND[n];if(f)f();try{if(BUZZ[n]&&navigator.vibrate)navigator.vibrate(BUZZ[n])}catch{}}
+let VOICE=null;
+function pickVoice(){try{const v=speechSynthesis.getVoices();VOICE=v.find(x=>/^es[-_]MX/i.test(x.lang))||v.find(x=>/^es/i.test(x.lang))||null}catch{}}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function say(text){
+  if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return;
+  try{const u=new SpeechSynthesisUtterance(text);u.lang=VOICE?VOICE.lang:'es-MX';if(VOICE)u.voice=VOICE;u.rate=.92;
+    speechSynthesis.cancel();speechSynthesis.resume();speechSynthesis.speak(u)}catch{}
+}
+function enableSound(){soundOn=true;ac();SND.on();setTimeout(()=>say('Sonido activado'),450);render()}
 function addTurn(sid){
   S.n[sid]=(S.n[sid]||0)+1;
   const t={id:sid+pad(S.n[sid]),s:sid,at:Date.now()};
@@ -347,7 +357,7 @@ function vSala(){
      <div class="to">${c?`Favor de pasar a <b>Mesa ${c.desk}</b>`:'Esperando…'}</div></div>
     <div class="side">${S.desks.map(d=>`<div class="mini ${d.cur?'':'idle'}"><span>Mesa ${d.id}</span><b>${d.cur?d.cur.id:'—'}</b></div>`).join('')}</div></div>
    <footer>En espera: <b>${S.q.length}</b> · Sucursal Centro</footer>
-   <button class="btn pri snd ${soundOn?'hide':''}" data-a="snd">${I.vol} Activar sonido</button></div>`;
+   ${soundOn?`<div class="snd"><button class="btn" data-a="voice">${S.voice?I.vol+' Sonido activado':I.mute+' Sonido apagado'}</button></div>`:`<button class="ov ovsnd" data-a="snd"><div class="modal ticket"><div class="num" style="font-size:3.2rem">${I.vol}</div><h2>Toca para activar el sonido</h2><p class="sub">Así se anunciará cada turno con voz y campanilla.</p></div></button>`}</div>`;
 }
 function vKiosko(){
   return `<div class="kiosk"><a class="back" href="#panel">${I.back} Panel</a><div class="logo"><i>${I.logo}</i><span>turnia<b>.</b></span></div>
@@ -378,13 +388,12 @@ function announce(){
   if(soundOn&&S.voice){
     SND.call();
     const id=S.called.id;
-    const u=new SpeechSynthesisUtterance(`Turno ${id[0]} ${parseInt(id.slice(1),10)}, favor de pasar a la mesa ${S.called.desk}`);
-    u.lang='es-MX';u.rate=.9;if('speechSynthesis' in window){speechSynthesis.cancel();setTimeout(()=>speechSynthesis.speak(u),900)}
+    setTimeout(()=>say('Turno '+id[0]+' '+parseInt(id.slice(1),10)+', favor de pasar a la mesa '+S.called.desk),900);
   }
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
-  if(b.classList.contains('ov')&&e.target!==b)return;
+  if(b.classList.contains('ov')&&!b.classList.contains('ovsnd')&&e.target!==b)return;
   const a=b.dataset.a;
   if(a==='new'){modal='new';play('tap')}
   else if(a==='close'){modal=null;play('tap')}
@@ -393,10 +402,11 @@ document.addEventListener('click',e=>{
   else if(a==='done'){finish(+b.dataset.d);play('done')}
   else if(a==='voice'){S.voice=!S.voice;save();play('on')}
   else if(a==='reset')return resetAll();
-  else if(a==='snd'){soundOn=true;ac();if('speechSynthesis' in window)speechSynthesis.speak(new SpeechSynthesisUtterance(''));SND.on()}
+  else if(a==='snd'){enableSound();return}
   render();
 });
 window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{S=JSON.parse(e.newValue);flashId=S.called&&S.called.id}catch{};render()}});
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{if(view()==='sala'&&!soundOn)enableSound()},true));
 window.addEventListener('hashchange',()=>{modal=null;render()});
 setInterval(()=>{const c=document.getElementById('clk');if(c)c.textContent=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})},15000);
 render();
