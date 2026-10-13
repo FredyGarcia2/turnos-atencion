@@ -261,6 +261,8 @@ function say(text){
   try{const u=new SpeechSynthesisUtterance(text);u.lang=VOICE?VOICE.lang:'es-MX';if(VOICE)u.voice=VOICE;u.rate=.92;
     speechSynthesis.cancel();speechSynthesis.resume();speechSynthesis.speak(u)}catch{}
 }
+const annTxt=c=>'Turno '+c.id[0]+' '+parseInt(c.id.slice(1),10)+', favor de pasar a la mesa '+c.desk;
+const salaOpen=()=>{try{return Date.now()-(+localStorage.getItem('turnia-sala-ping')||0)<5000}catch{return false}};
 function enableSound(){soundOn=true;ac();SND.on();setTimeout(()=>say('Sonido activado'),450);render()}
 function addTurn(sid){
   S.n[sid]=(S.n[sid]||0)+1;
@@ -388,7 +390,7 @@ function announce(){
   if(soundOn&&S.voice){
     SND.call();
     const id=S.called.id;
-    setTimeout(()=>say('Turno '+id[0]+' '+parseInt(id.slice(1),10)+', favor de pasar a la mesa '+S.called.desk),900);
+    setTimeout(()=>say(annTxt(S.called)),900);
   }
 }
 document.addEventListener('click',e=>{
@@ -398,7 +400,7 @@ document.addEventListener('click',e=>{
   if(a==='new'){modal='new';play('tap')}
   else if(a==='close'){modal=null;play('tap')}
   else if(a==='take'){lastTicket=addTurn(b.dataset.s);modal='ticket';play('take')}
-  else if(a==='call'){callNext(+b.dataset.d);play('call')}
+  else if(a==='call'){callNext(+b.dataset.d);play('call');if(S.voice&&S.called&&!salaOpen()){const c=S.called;setTimeout(()=>say(annTxt(c)),900)}}
   else if(a==='done'){finish(+b.dataset.d);play('done')}
   else if(a==='voice'){S.voice=!S.voice;save();play('on')}
   else if(a==='reset')return resetAll();
@@ -408,6 +410,7 @@ document.addEventListener('click',e=>{
 window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{S=JSON.parse(e.newValue);flashId=S.called&&S.called.id}catch{};render()}});
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{if(view()==='sala'&&!soundOn)enableSound()},true));
 window.addEventListener('hashchange',()=>{modal=null;render()});
+setInterval(()=>{if(view()==='sala'&&soundOn){try{localStorage.setItem('turnia-sala-ping',Date.now())}catch{}}},2000);
 setInterval(()=>{const c=document.getElementById('clk');if(c)c.textContent=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})},15000);
 render();
 </script>
