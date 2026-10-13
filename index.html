@@ -149,18 +149,50 @@ h1{margin:0;font-size:2.4rem;letter-spacing:-.035em;line-height:1.1}
 .kbtn .l{width:64px;height:64px;border-radius:18px;background:var(--gs);color:var(--g);display:grid;place-items:center;font-size:1.8rem;font-weight:800}
 .kbtn small{font-size:.9rem;color:var(--mut);font-weight:500}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}}
+.mbar,.tabbar{display:none}
+.back{position:fixed;left:16px;top:16px;z-index:5;padding:9px 14px;border-radius:99px;background:var(--card);border:1px solid var(--bd);color:var(--tx);text-decoration:none;font-weight:700;font-size:.85rem}
 @media(max-width:820px){
-  .app{grid-template-columns:1fr}
-  aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;padding:14px 16px;gap:12px}
-  aside .branch,aside .side-foot,aside .sec{display:none}
-  aside nav{display:flex;gap:6px;flex-wrap:wrap}
-  main{padding:0 16px 32px}
-  h1{font-size:1.8rem}
+  .app{grid-template-columns:1fr;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  aside{display:none}
+  .mbar{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:12px 16px}
+  .mbar .logo{font-size:1.35rem}.mbar .logo i{width:32px;height:32px;border-radius:10px;font-size:1rem}
+  .mbar .br{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--mut);font-weight:600}
+  .tabbar{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--bd);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+  .tabbar a,.tabbar button{display:grid;justify-items:center;gap:2px;padding:8px 4px;border-radius:12px;color:var(--mut);text-decoration:none;font-size:.7rem;font-weight:700;min-height:48px}
+  .tabbar span{font-size:1.25rem;line-height:1}
+  .tabbar .on{background:var(--gs);color:var(--gd)}
+  .tabbar .add{color:#fff;background:linear-gradient(135deg,var(--g),var(--g2));box-shadow:0 6px 16px rgba(31,122,77,.35)}
+  main{padding:0 16px 24px}
+  .top{display:none}
+  .eyebrow{margin:20px 0 6px;flex-wrap:wrap;gap:8px}
+  h1{font-size:1.75rem}
+  .head{gap:14px}
+  .btns{width:100%}.btns .btn{flex:1;justify-content:center;padding:14px 12px}
+  .btns .btn:not(.pri){display:none}
+  .stats{grid-template-columns:1fr 1fr;gap:12px;margin:20px 0 16px}
+  .card{padding:16px;border-radius:18px}
+  .stat .ic{width:34px;height:34px}.stat .v{font-size:1.7rem}.stat .row{font-size:.8rem}.stat .n{font-size:.7rem}
+  .cols{gap:16px}.stack{gap:16px}
+  .now{padding:16px}.now .num{font-size:4.6rem;margin:52px 0 4px}
+  .now .voice{right:12px;top:10px;padding:6px 10px;font-size:.72rem}.now .lbl{left:16px;top:16px;font-size:.62rem}
+  .now .foot{flex-direction:column;gap:6px;align-items:center}
   .desks{grid-template-columns:1fr}
-  .now .num{font-size:4.5rem}
-  .sala{padding:20px}.sala .main{grid-template-columns:1fr}
-  .kiosk .grid{grid-template-columns:1fr}
+  .desk button{padding:14px;font-size:.92rem}
+  .foot2{flex-direction:column;gap:4px;align-items:center}
+  .modal{padding:22px;border-radius:22px}
+  .ov{align-items:end;padding:0}.ov .modal{width:100%;border-radius:24px 24px 0 0;padding-bottom:calc(22px + env(safe-area-inset-bottom))}
+  .sala{padding:64px 16px 20px;grid-template-rows:auto auto auto}
+  .sala .main{grid-template-columns:1fr;gap:20px;padding:12px 0}
+  .sala .big .to{font-size:1.4rem}
+  .sala .side{grid-template-columns:1fr 1fr;gap:10px}
+  .sala .mini{padding:12px 14px;font-size:.9rem}.sala .mini b{font-size:1.4rem}
+  .sala .clock{font-size:1.1rem}
+  .kiosk{padding:68px 16px 32px;gap:20px}.kiosk .grid{grid-template-columns:1fr;gap:12px}
+  .kbtn{padding:20px 16px;grid-template-columns:auto 1fr;justify-items:start;text-align:left;font-size:1.1rem;column-gap:16px}
+  .kbtn .l{width:52px;height:52px;grid-row:span 2;font-size:1.4rem}
+  .snd{left:16px;right:16px;bottom:16px;justify-content:center}
 }
+@media(max-width:380px){.stats{grid-template-columns:1fr}.now .num{font-size:3.8rem}}
 </style>
 </head>
 <body>
@@ -246,7 +278,8 @@ function vPanel(){
   const nxt=S.q[0];
   const c=S.called;
   const wait=S.q.length;
-  return `<div class="app">${sidebar('panel')}<main>
+  return `<div class="app">${sidebar('panel')}
+   <div class="mbar"><div class="logo"><i>↗</i><span>fila<b>.</b></span></div><div class="br"><i class="dot pulse" style="color:var(--g)"></i>Sucursal Centro</div></div><main>
    <div class="top"><span>Operación &nbsp;/&nbsp; <b>Control de turnos</b></span>
      <div class="r"><span>◔ Hoy, ${new Date().toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}</span><div class="av" style="width:36px;height:36px">AM</div></div></div>
    <div class="eyebrow">PANEL DE OPERACIÓN <span class="pill"><i class="dot pulse"></i>Sistema en línea</span></div>
@@ -288,11 +321,12 @@ function vPanel(){
      <div class="card tip"><div class="ic">${I.spark}</div><div><b>Consejo rápido</b><p>Los turnos se llaman en orden. Cuando termines, libera la mesa para la siguiente persona.</p></div></div>
    </div></div>
    <div class="foot2"><span><i class="dot" style="color:var(--g)"></i> Todo está sincronizado</span><span>Última actualización: ahora</span></div>
-  </main></div>`;
+  </main>
+   <nav class="tabbar"><a href="#panel" class="on"><span>▦</span>Panel</a><a href="#sala"><span>▣</span>Sala</a><a href="#kiosko"><span>🎫</span>Kiosko</a><button class="add" data-a="new"><span>+</span>Turno</button></nav></div>`;
 }
 function vSala(){
   const c=S.called;
-  return `<div class="sala"><header><div class="logo"><i>↗</i><span>fila<b>.</b></span></div><div class="clock" id="clk">${new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</div></header>
+  return `<div class="sala"><a class="back" href="#panel">← Panel</a><header style="padding-left:0"><div class="logo"><i>↗</i><span>fila<b>.</b></span></div><div class="clock" id="clk">${new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</div></header>
    <div class="main"><div class="big"><small>TURNO LLAMADO</small><div class="num ${c&&flashId===c.id?'flash':''}">${c?c.id:'—'}</div>
      <div class="to">${c?`Favor de pasar a <b>Mesa ${c.desk}</b>`:'Esperando…'}</div></div>
     <div class="side">${S.desks.map(d=>`<div class="mini ${d.cur?'':'idle'}"><span>Mesa ${d.id}</span><b>${d.cur?d.cur.id:'—'}</b></div>`).join('')}</div></div>
@@ -300,7 +334,7 @@ function vSala(){
    <button class="btn pri snd ${soundOn?'hide':''}" data-a="snd">🔊 Activar sonido</button></div>`;
 }
 function vKiosko(){
-  return `<div class="kiosk"><div class="logo"><i>↗</i><span>fila<b>.</b></span></div>
+  return `<div class="kiosk"><a class="back" href="#panel">← Panel</a><div class="logo"><i>↗</i><span>fila<b>.</b></span></div>
    <div><h1>Toma tu turno</h1><p class="sub">Elige el servicio que necesitas</p></div>
    <div class="grid">${SERVICES.map(s=>`<button class="kbtn" data-a="take" data-s="${s.id}"><div class="l">${s.id}</div>${s.name}<small>${s.desc} · ${S.q.filter(t=>t.s===s.id).length} en espera</small></button>`).join('')}</div></div>`;
 }
